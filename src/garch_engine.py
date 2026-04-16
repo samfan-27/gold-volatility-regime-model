@@ -14,13 +14,13 @@ logging.basicConfig(
 logger = logging.getLogger('GarchEngine')
 
 class GarchVolatilityModel:
-    def __init__(self, df: pd.DataFrame, lookback_window: int = 252, regime_window: int = 60, high_vol_percentile: float = 0.80):
+    def __init__(self, df, lookback_window=252, regime_window=60, high_vol_percentile=0.80):
         self.df = df.copy()
         self.lookback_window = lookback_window
         self.regime_window = regime_window
         self.high_vol_percentile = high_vol_percentile
 
-    def _fit_and_forecast(self, returns: pd.Series) -> float:
+    def _fit_and_forecast(self, returns):
         scaled_returns = returns * 100.0
 
         am = arch_model(
@@ -61,10 +61,13 @@ class GarchVolatilityModel:
 
     def classify_regimes(self):
         logger.info('Classifying volatility regimes...')
-        rolling_rank = self.df['GARCH_Vol_Annualized'].rolling(window=self.regime_window).rank(pct=True)
+        rolling_rank = self.df['GARCH_Vol_Annualized'].rolling(
+            window=self.regime_window,
+            min_periods=self.regime_window
+        ).rank(pct=True)
         self.df['Regime'] = np.where(rolling_rank >= self.high_vol_percentile, 1, 0)
 
-        self.df.loc[self.df['GARCH_Vol_Annualized'].isna(), 'Regime'] = np.nan
+        self.df.loc[rolling_rank.isna(), 'Regime'] = np.nan
 
         logger.info('Regime classification completed.')
 
